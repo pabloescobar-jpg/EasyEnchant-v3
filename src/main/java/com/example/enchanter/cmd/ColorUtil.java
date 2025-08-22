@@ -1,16 +1,16 @@
 package com.example.enchanter.cmd;
 
 import org.bukkit.ChatColor;
-import java.util.regex.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-    public final class ColorUtil {
-        // ...colorize(), isColorToken(), normalizeSpaces() as you have...
-        public static String stripSpaceAfterLeadingColor(String s){
-            if (s == null) return null;
-            return s.replaceFirst("(?i)^((?:&#[0-9A-F]{6}|#[0-9A-F]{6}|&[0-9A-FK-OR]|§[0-9A-FK-OR])+)[ \\t]+", "$1");
-          }
-    }
+public final class ColorUtil {
+    private ColorUtil() {}
 
+    // & #RRGGBB  or  #RRGGBB  → converts to §x§R§R§G§G§B§B
+    private static final Pattern HEX = Pattern.compile("(?i)(?:&?#)([0-9a-f]{6})");
+
+    /** Apply hex (&#RRGGBB / #RRGGBB) and legacy (&a etc) color codes. */
     public static String colorize(String s){
         if (s == null || s.isEmpty()) return s;
         Matcher m = HEX.matcher(s);
@@ -24,14 +24,22 @@ import java.util.regex.*;
         return ChatColor.translateAlternateColorCodes('&', sb.toString());
     }
 
+    /** True if token looks like a color (&a…&f, &k…&r, or #RRGGBB / &#RRGGBB). */
     public static boolean isColorToken(String t){
         if (t == null) return false;
-        t = t.trim();
-        return t.matches("(?i)&[0-9A-FK-OR]") || t.matches("(?i)&?#[0-9A-F]{6}");
+        String v = t.trim();
+        return v.matches("(?i)&[0-9A-FK-OR]") || v.matches("(?i)&?#[0-9A-F]{6}");
     }
 
+    /** Collapse whitespace and trim ends. */
     public static String normalizeSpaces(String s){
         if (s == null) return null;
         return s.replaceAll("\\s+", " ").trim();
+    }
+
+    /** If the string starts with color code(s) then a space (e.g. "&2 Name"), drop that space. */
+    public static String stripSpaceAfterLeadingColor(String s){
+        if (s == null) return null;
+        return s.replaceFirst("(?i)^((?:&#[0-9A-F]{6}|#[0-9A-F]{6}|&[0-9A-FK-OR]|§[0-9A-FK-OR])+)[ \\t]+", "$1");
     }
 }
