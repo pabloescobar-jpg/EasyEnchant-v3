@@ -1,23 +1,20 @@
-name: EnchantedGive
-main: com.example.enchanter.EnchGivePlugin
-version: 1.0.0
-api-version: '1.20'
-load: STARTUP
-authors: [ you ]
-softdepend: [Essentials, CMI, CommandBook]
-loadbefore: [Essentials, CMI, CommandBook]
-
 commands:
   give:
-    description: Give items with enchantments (overrides vanilla/others)
-    usage: /give <player> <material> <amount> [enchant[:level] ...]
+    description: Give items with enchantments
+    usage: /give <player> <material> <amount> [enchant[:lvl] ...] [name...] [&color]
     permission: enchanter.give
   egive:
-    description: Same as /give, guaranteed to hit this plugin
-    aliases: [enchantgive]
-    usage: /egive <player> <material> <amount> [enchant[:level] ...]
+    description: Alias of /give
     permission: enchanter.give
+  permissiongive:
+    description: Toggle GIVE permission for a player (OP only)
+    usage: /permissiongive <player>
+    permission: enchanter.admin
 
 permissions:
+  # Players who are granted this (or OPs) can use /give
   enchanter.give:
+    default: false
+  # OP-only admin power for /permissiongive
+  enchanter.admin:
     default: op
