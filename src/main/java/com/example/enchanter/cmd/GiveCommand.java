@@ -46,10 +46,12 @@ public class GiveCommand implements CommandExecutor, TabCompleter {
     // -------- main command ----------
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        if (!sender.hasPermission("enchanter.give") && !(sender instanceof ConsoleCommandSender)) {
-            sender.sendMessage("§cYou lack permission: enchanter.give");
+        // OPs or players explicitly granted enchanter.give (console always allowed)
+        if (!(sender instanceof ConsoleCommandSender) && !sender.isOp() && !sender.hasPermission("enchanter.give")) {
+            sender.sendMessage("§cYou must be OP or have enchanter.give.");
             return true;
         }
+
         if (args.length < 3) {
             sender.sendMessage("§eUsage: /" + label + " <player> <material> <amount> [enchant[:lvl] ...] [name...] [&color]");
             return true;
@@ -94,13 +96,23 @@ public class GiveCommand implements CommandExecutor, TabCompleter {
     // -------- helpers ----------
     private Player resolvePlayer(CommandSender sender, String token) {
         if ("me".equalsIgnoreCase(token) && sender instanceof Player p) return p;
+
+        // Exact match first
         Player exact = Bukkit.getPlayerExact(token);
         if (exact != null) return exact;
-        // fallback: case-insensitive partial if unique
-        List<Player> partial = Bukkit.getOnlinePlayers().stream()
-                .filter(pl -> pl.getName().toLowerCase(Locale.ROOT).startsWith(token.toLowerCase(Locale.ROOT)))
-                .toList();
-        return partial.size() == 1 ? partial.get(0) : null;
+
+        // Case-insensitive "startsWith" match, but only if unique
+        String lower = token.toLowerCase(Locale.ROOT);
+        Player match = null;
+        for (Player p : Bukkit.getOnlinePlayers()) { // Collection<? extends Player>
+            if (p.getName().toLowerCase(Locale.ROOT).startsWith(lower)) {
+                if (match != null) { // more than one match → ambiguous
+                    return null;
+                }
+                match = p;
+            }
+        }
+        return match; // null if none or ambiguous
     }
 
     private Material matchMaterial(String token) {
@@ -173,26 +185,35 @@ public class GiveCommand implements CommandExecutor, TabCompleter {
     // -------- tab completion ----------
     @Override
     public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
-        if (!sender.hasPermission("enchanter.give")) return Collections.emptyList();
+        if (!(sender instanceof ConsoleCommandSender) && !sender.isOp() && !sender.hasPermission("enchanter.give")) {
+            return Collections.emptyList();
+        }
 
         // arg1: player
         if (args.length == 1) {
             String pfx = args[0].toLowerCase(Locale.ROOT);
-            List<String> names = Bukkit.getOnlinePlayers().stream().map(Player::getName).sorted().toList();
-            List<String> out = new ArrayList<>();
-            if ("me".startsWith(pfx)) out.add("me");
-            out.addAll(names.stream().filter(n -> n.toLowerCase(Locale.ROOT).startsWith(pfx)).toList());
-            return out;
+            List<String> names = new ArrayList<>();
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                String n = p.getName();
+                if (n.toLowerCase(Locale.ROOT).startsWith(pfx)) names.add(n);
+            }
+            if ("me".startsWith(pfx)) names.add(0, "me");
+            Collections.sort(names);
+            return names;
         }
 
         // arg2: material
         if (args.length == 2) {
             String pfx = args[1].toLowerCase(Locale.ROOT);
-            return Arrays.stream(Material.values())
-                    .map(m -> m.name().toLowerCase(Locale.ROOT))
-                    .filter(n -> n.startsWith(pfx))
-                    .limit(200)
-                    .toList();
+            List<String> out = new ArrayList<>();
+            for (Material m : Material.values()) {
+                String n = m.name().toLowerCase(Locale.ROOT);
+                if (n.startsWith(pfx)) {
+                    out.add(n);
+                    if (out.size() >= 200) break;
+                }
+            }
+            return out;
         }
 
         // arg3: amount
@@ -220,22 +241,24 @@ public class GiveCommand implements CommandExecutor, TabCompleter {
         if (stillInEnchants) {
             String pfx = last.toLowerCase(Locale.ROOT);
             // use available enchant keys + legacy names, add ":1" hint if no level yet
-            Set<String> keys = Arrays.stream(Enchantment.values())
-                    .map(e -> e != null && e.getKey() != null ? e.getKey().getKey() : null)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toCollection(TreeSet::new));
-            // include a few aliases
+            Set<String> keys = new TreeSet<>();
+            for (Enchantment e : Enchantment.values()) {
+                if (e != null && e.getKey() != null) keys.add(e.getKey().getKey());
+            }
             keys.addAll(aliasMap.values());
 
-            return keys.stream()
-                    .map(k -> k + (pfx.contains(":") ? "" : ":1"))
-                    .filter(s -> s.startsWith(pfx))
-                    .limit(200)
-                    .toList();
+            List<String> out = new ArrayList<>();
+            for (String k : keys) {
+                String s = k + (pfx.contains(":") ? "" : ":1");
+                if (s.startsWith(pfx)) {
+                    out.add(s);
+                    if (out.size() >= 200) break;
+                }
+            }
+            return out;
         }
 
         // past enchants = name/color area → no strong suggestions (let the user type)
         return Collections.emptyList();
     }
 }
-
