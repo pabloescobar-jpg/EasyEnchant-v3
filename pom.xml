@@ -8,7 +8,7 @@
   <artifactId>easy-enchantments</artifactId>
   <version>1.0.1</version>
   <name>EasyEnchantments</name>
-  <description>Easy item give/enchant, glow, rename & color commands with Essentials-style messages.</description>
+  <description>Easy item give/enchant, glow, rename &amp; color commands with Essentials-style messages.</description>
   <url>https://github.com/pabloescobar-jpg/easy-enchant-nbt</url>
 
   <!-- Publisher / metadata -->
@@ -30,8 +30,8 @@
   <properties>
     <maven.compiler.release>17</maven.compiler.release>
     <paper.version>1.21.4-R0.1-SNAPSHOT</paper.version>
-    <!-- Controls the JAR filename: target/${project.build.finalName}.jar -->
-    <project.build.finalName>EasyEnchantments${project.version}</project.build.finalName>
+    <!-- EXACT jar filename -->
+    <project.build.finalName>EasyEnchantments1.0.1</project.build.finalName>
   </properties>
 
   <repositories>
@@ -52,7 +52,6 @@
   </dependencies>
 
   <build>
-    <!-- EXACT jar filename -->
     <finalName>${project.build.finalName}</finalName>
 
     <plugins>
@@ -66,7 +65,7 @@
         </configuration>
       </plugin>
 
-      <!-- Make PACKACGE_INSIDE.zip that contains the jar -->
+      <!-- Create PACKACGE_INSIDE.zip with the built jar inside -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-antrun-plugin</artifactId>
@@ -79,7 +78,6 @@
               <target name="zip-jar">
                 <delete file="${project.build.directory}/PACKACGE_INSIDE.zip"/>
                 <zip destfile="${project.build.directory}/PACKACGE_INSIDE.zip">
-                  <!-- include ONLY the built jar at the root of the zip -->
                   <zipfileset dir="${project.build.directory}" includes="${project.build.finalName}.jar"/>
                 </zip>
               </target>
@@ -89,7 +87,7 @@
         </executions>
       </plugin>
 
-      <!-- If you ever need to shade libraries later, uncomment this block.
+      <!-- If you later need to bundle libs, uncomment shade and keep the same finalName
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
@@ -110,3 +108,4 @@
     </plugins>
   </build>
 </project>
+
