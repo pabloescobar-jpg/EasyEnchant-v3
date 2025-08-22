@@ -1,5 +1,5 @@
 name: EasyEnchantments
-main: com.example.enchanter.EnchGivePlugin   # <-- keep your actual main class path here
+main: com.example.enchanter.EnchGivePlugin
 version: 1.0.1
 api-version: '1.21'
 authors: [ Meatylumberjack ]
@@ -31,7 +31,7 @@ commands:
     permission: enchanter.name
 
 permissions:
-  enchanter.give:   { default: false }
+  enchanter.give:   { default: false } # OPs or players granted via /permissiongive
   enchanter.admin:  { default: op }
   enchanter.glow:   { default: op }
   enchanter.color:  { default: op }
