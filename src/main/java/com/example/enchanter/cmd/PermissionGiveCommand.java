@@ -6,7 +6,10 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
 
 public class PermissionGiveCommand implements CommandExecutor, TabCompleter {
 
@@ -18,55 +21,54 @@ public class PermissionGiveCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        // OP-only (console allowed)
         if (!(sender instanceof ConsoleCommandSender) && !sender.isOp()) {
-            sender.sendMessage("§cYou must be OP to use /" + label + ".");
+            Msg.tell(sender, Msg.fill("OP only."));
             return true;
         }
-
         if (args.length != 1) {
-            sender.sendMessage("§eUsage: /" + label + " <player>");
+            Msg.usage(sender, "/" + label + " <player>");
             return true;
         }
 
-        // Prefer online player; fallback to offline by name
-        Player online = Bukkit.getPlayerExact(args[0]);
+        String token = args[0];
         UUID uuid;
         String display;
+
+        // Prefer online player exact match
+        Player online = Bukkit.getPlayerExact(token);
         if (online != null) {
             uuid = online.getUniqueId();
             display = online.getName();
         } else {
-            @SuppressWarnings("deprecation")
-            OfflinePlayer off = Bukkit.getOfflinePlayer(args[0]);
-            if (off == null || (off.getName() == null && !off.hasPlayedBefore())) {
-                sender.sendMessage("§cPlayer not found: " + args[0]);
-                return true;
-            }
+            // Fallback to offline cache; if not cached, create an OfflinePlayer to get a UUID
+            OfflinePlayer off = Bukkit.getOfflinePlayerIfCached(token);
+            if (off == null) off = Bukkit.getOfflinePlayer(token);
             uuid = off.getUniqueId();
-            display = off.getName() != null ? off.getName() : args[0];
+            display = off.getName() != null ? off.getName() : token;
         }
 
         boolean grantedNow = plugin.toggleGive(uuid);
         if (grantedNow) {
-            sender.sendMessage("§a[EasyEnchant] §f" + display + " §ahas received §fGIVE §apermission");
+            Msg.tell(sender, Msg.fill(display) + " has received " + Msg.fill("GIVE") + " permission");
         } else {
-            sender.sendMessage("§a[EasyEnchant] §f" + display + " §ahas lost §fGIVE §apermission");
+            Msg.tell(sender, Msg.fill(display) + " has lost " + Msg.fill("GIVE") + " permission");
         }
         return true;
     }
 
+    // simple player name completion
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (!(sender instanceof ConsoleCommandSender) && !sender.isOp()) return Collections.emptyList();
-        if (args.length == 1) {
-            String pfx = args[0].toLowerCase(Locale.ROOT);
-            List<String> names = new ArrayList<>();
-            for (Player p : Bukkit.getOnlinePlayers()) {
-                if (p.getName().toLowerCase(Locale.ROOT).startsWith(pfx)) names.add(p.getName());
-            }
-            return names;
+        if (args.length != 1) return Collections.emptyList();
+
+        String pfx = args[0].toLowerCase();
+        List<String> out = new ArrayList<>();
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            String n = p.getName();
+            if (n.toLowerCase().startsWith(pfx)) out.add(n);
         }
-        return Collections.emptyList();
-    }
+        Collections.sort(out);
+        return out;
+        }
 }
