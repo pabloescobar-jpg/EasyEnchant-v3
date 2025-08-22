@@ -1,10 +1,6 @@
 package com.example.enchanter;
 
-import com.example.enchanter.cmd.GiveCommand;
-import com.example.enchanter.cmd.PermissionGiveCommand;
-import com.example.enchanter.cmd.GlowToggleCommand;
-import com.example.enchanter.cmd.ColorCommand;
-import com.example.enchanter.cmd.NameCommand;
+import com.example.enchanter.cmd.*;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -18,17 +14,17 @@ import java.util.*;
 
 public final class EnchGivePlugin extends JavaPlugin implements Listener {
 
-    // players explicitly granted enchanter.give (persisted)
+    // Persist who is allowed to use /give (non-OPs)
     private final Set<UUID> giveAllowed = new HashSet<>();
-    // live attachments per online player
     private final Map<UUID, PermissionAttachment> giveAttachments = new HashMap<>();
 
     @Override
     public void onEnable() {
+        // Config holds giveAllowed UUID list
         saveDefaultConfig();
         loadAllowed();
 
-        // Commands
+        // Register /give + /egive
         GiveCommand give = new GiveCommand();
         if (getCommand("give") != null) {
             getCommand("give").setExecutor(give);
@@ -39,14 +35,17 @@ public final class EnchGivePlugin extends JavaPlugin implements Listener {
             getCommand("egive").setTabCompleter(give);
         }
 
-        // New: toggle /permissiongive (OP-only)
+        // Intercept raw "/give" so ours wins over Essentials/vanilla
+        getServer().getPluginManager().registerEvents(new GiveInterceptor(this, give), this);
+
+        // /permissiongive (OP-only)
         PermissionGiveCommand pGive = new PermissionGiveCommand(this);
         if (getCommand("permissiongive") != null) {
             getCommand("permissiongive").setExecutor(pGive);
             getCommand("permissiongive").setTabCompleter(pGive);
         }
 
-        // Your other commands if you added them:
+        // /glow, /color, /name
         if (getCommand("glow") != null)
             getCommand("glow").setExecutor(new GlowToggleCommand(new org.bukkit.NamespacedKey(this, "easy_glow")));
         if (getCommand("color") != null)
@@ -54,23 +53,24 @@ public final class EnchGivePlugin extends JavaPlugin implements Listener {
         if (getCommand("name") != null)
             getCommand("name").setExecutor(new NameCommand());
 
-        // Listeners to apply/remove attachments
+        // Listener for applying saved perms and cleanup
         getServer().getPluginManager().registerEvents(this, this);
 
-        // Apply to any players already online (server reload)
+        // Re-apply attachment on reload
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (giveAllowed.contains(p.getUniqueId())) attachGive(p);
         }
 
-        getLogger().info("EasyEnchant enabled.");
+        getLogger().info("EasyEnchantments enabled.");
     }
 
     @Override
     public void onDisable() {
-        // cleanly remove attachments
-        for (Map.Entry<UUID, PermissionAttachment> e : giveAttachments.entrySet()) {
-            Player p = Bukkit.getPlayer(e.getKey());
-            if (p != null && e.getValue() != null) p.removeAttachment(e.getValue());
+        // Remove attachments cleanly
+        for (PermissionAttachment att : giveAttachments.values()) {
+            try {
+                att.getPermissible().removeAttachment(att);
+            } catch (Exception ignored) {}
         }
         giveAttachments.clear();
         saveAllowed();
@@ -124,14 +124,10 @@ public final class EnchGivePlugin extends JavaPlugin implements Listener {
         if (att != null) p.removeAttachment(att);
     }
 
-    @EventHandler
-    public void onJoin(PlayerJoinEvent e) {
+    @EventHandler public void onJoin(PlayerJoinEvent e) {
         if (giveAllowed.contains(e.getPlayer().getUniqueId())) attachGive(e.getPlayer());
     }
-
-    @EventHandler
-    public void onQuit(PlayerQuitEvent e) {
-        // optional: free attachment when they leave
+    @EventHandler public void onQuit(PlayerQuitEvent e) {
         detachGive(e.getPlayer());
     }
 }
