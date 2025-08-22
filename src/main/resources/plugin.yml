@@ -1,38 +1,54 @@
 name: EasyEnchantments
 main: com.example.enchanter.EnchGivePlugin
 version: 1.0.1
-api-version: '1.21'
-authors: [ Meatylumberjack ]
-website: https://github.com/pabloescobar-jpg/easy-enchant-nbt
+api-version: '1.20'
+author: MeatyLumberjack
+description: Easy item give/enchant, glow, rename & color with Essentials-style messages.
 
 commands:
   give:
-    description: Give items with enchants, name, and color
-    usage: /give <player> <material> <amount> [enchant[:lvl] ...] [name...] [&color]
+    description: Give items with enchants, name and color (Essentials-style broadcast).
+    usage: /give <player> <material> [amount] [enchant[:lvl] ...] [name...] [&color]
+    aliases: [egive]
     permission: enchanter.give
-  egive:
-    description: Alias of /give
-    permission: enchanter.give
-  permissiongive:
-    description: Toggle GIVE permission for a player (OP only)
-    usage: /permissiongive <player>
-    permission: enchanter.admin
-  glow:
-    description: Toggle hidden glow on the held item
-    usage: /glow
-    permission: enchanter.glow
+
   color:
-    description: Set held item name color from &code or #RRGGBB
+    description: Change the color of the held item’s display name.
     usage: /color <&code|#RRGGBB>
     permission: enchanter.color
+
   name:
-    description: Set held item name text
+    description: Rename the held item (non-italic).
     usage: /name <name...>
     permission: enchanter.name
 
+  glow:
+    description: Toggle visual enchant glint on the held item.
+    usage: /glow
+    permission: enchanter.glow
+
+  permissiongive:
+    description: Toggle GIVE permission for a player (persists to config).
+    usage: /permissiongive <player>
+    permission: enchanter.admin
+
 permissions:
-  enchanter.give:   { default: false } # OPs or players granted via /permissiongive
-  enchanter.admin:  { default: op }
-  enchanter.glow:   { default: op }
-  enchanter.color:  { default: op }
-  enchanter.name:   { default: op }
+  enchanter.admin:
+    default: op
+    description: Use /permissiongive
+
+  enchanter.give:
+    default: false
+    description: Use /give (can be toggled per-player)
+
+  enchanter.glow:
+    default: op
+    description: Use /glow
+
+  enchanter.color:
+    default: op
+    description: Use /color
+
+  enchanter.name:
+    default: op
+    description: Use /name
