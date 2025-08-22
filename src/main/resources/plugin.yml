@@ -1,6 +1,13 @@
+name: EasyEnchantments
+main: com.example.enchanter.EnchGivePlugin   # <-- keep your actual main class path here
+version: 1.0.1
+api-version: '1.21'
+authors: [ Meatylumberjack ]
+website: https://github.com/pabloescobar-jpg/easy-enchant-nbt
+
 commands:
   give:
-    description: Give items with enchantments
+    description: Give items with enchants, name, and color
     usage: /give <player> <material> <amount> [enchant[:lvl] ...] [name...] [&color]
     permission: enchanter.give
   egive:
@@ -10,11 +17,22 @@ commands:
     description: Toggle GIVE permission for a player (OP only)
     usage: /permissiongive <player>
     permission: enchanter.admin
+  glow:
+    description: Toggle hidden glow on the held item
+    usage: /glow
+    permission: enchanter.glow
+  color:
+    description: Set held item name color from &code or #RRGGBB
+    usage: /color <&code|#RRGGBB>
+    permission: enchanter.color
+  name:
+    description: Set held item name text
+    usage: /name <name...>
+    permission: enchanter.name
 
 permissions:
-  # Players who are granted this (or OPs) can use /give
-  enchanter.give:
-    default: false
-  # OP-only admin power for /permissiongive
-  enchanter.admin:
-    default: op
+  enchanter.give:   { default: false }
+  enchanter.admin:  { default: op }
+  enchanter.glow:   { default: op }
+  enchanter.color:  { default: op }
+  enchanter.name:   { default: op }
