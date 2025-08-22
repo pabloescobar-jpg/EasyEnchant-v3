@@ -9,7 +9,6 @@ public final class ColorUtil {
 
     public static String colorize(String s){
         if (s == null || s.isEmpty()) return s;
-        // hex first → §x§R§R§G§G§B§B
         Matcher m = HEX.matcher(s);
         StringBuffer sb = new StringBuffer();
         while (m.find()){
@@ -21,10 +20,14 @@ public final class ColorUtil {
         return ChatColor.translateAlternateColorCodes('&', sb.toString());
     }
 
-    /** true if token looks like a color, e.g. &a or &#RRGGBB or #RRGGBB */
     public static boolean isColorToken(String t){
         if (t == null) return false;
         t = t.trim();
         return t.matches("(?i)&[0-9A-FK-OR]") || t.matches("(?i)&?#[0-9A-F]{6}");
+    }
+
+    public static String normalizeSpaces(String s){
+        if (s == null) return null;
+        return s.replaceAll("\\s+", " ").trim();
     }
 }
