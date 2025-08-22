@@ -1,55 +1,112 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.example</groupId>
-  <artifactId>clickcopychat</artifactId>
-  <version>1.1.0</version>
-  <name>ClickCopyChat</name>
+  <!-- Coordinates -->
+  <groupId>com.meatylumberjack</groupId>
+  <artifactId>easy-enchantments</artifactId>
+  <version>1.0.1</version>
+  <name>EasyEnchantments</name>
+  <description>Easy item give/enchant, glow, rename & color commands with Essentials-style messages.</description>
+  <url>https://github.com/pabloescobar-jpg/easy-enchant-nbt</url>
+
+  <!-- Publisher / metadata -->
+  <developers>
+    <developer>
+      <id>Meatylumberjack</id>
+      <name>Meatylumberjack</name>
+      <organization>EasyEnchantments</organization>
+      <organizationUrl>https://github.com/pabloescobar-jpg</organizationUrl>
+    </developer>
+  </developers>
+  <licenses>
+    <license>
+      <name>MIT</name>
+      <url>https://opensource.org/licenses/MIT</url>
+    </license>
+  </licenses>
 
   <properties>
-    <maven.compiler.source>21</maven.compiler.source>
-    <maven.compiler.target>21</maven.compiler.target>
-    <maven.compiler.release>21</maven.compiler.release>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.release>17</maven.compiler.release>
+    <paper.version>1.21.4-R0.1-SNAPSHOT</paper.version>
+    <!-- Controls the JAR filename: target/${project.build.finalName}.jar -->
+    <project.build.finalName>EasyEnchantments${project.version}</project.build.finalName>
   </properties>
 
   <repositories>
-    <!-- Paper API -->
     <repository>
       <id>papermc-repo</id>
       <url>https://repo.papermc.io/repository/maven-public/</url>
     </repository>
-
-    <!-- ProtocolLib via JitPack (most reliable on CI) -->
-    <repository>
-      <id>jitpack.io</id>
-      <url>https://jitpack.io</url>
-    </repository>
-
-    <!-- Optional extra mirror for MC libs -->
-    <repository>
-      <id>codemc-public</id>
-      <url>https://repo.codemc.org/repository/maven-public/</url>
-    </repository>
   </repositories>
 
   <dependencies>
+    <!-- Paper API (provided at runtime by the server) -->
     <dependency>
       <groupId>io.papermc.paper</groupId>
       <artifactId>paper-api</artifactId>
-      <version>1.21.1-R0.1-SNAPSHOT</version>
+      <version>${paper.version}</version>
       <scope>provided</scope>
     </dependency>
-
-    <!-- ProtocolLib (from JitPack) -->
-    <dependency>
-      <groupId>com.github.dmulloy2</groupId>
-      <artifactId>ProtocolLib</artifactId>
-      <version>5.2.0</version>
-      <scope>provided</scope>
-    </dependency>
-    <!-- If JitPack 5.2.0 ever fails, try 5.3.0-SNAPSHOT or a specific commit/tag from ProtocolLib -->
   </dependencies>
+
+  <build>
+    <!-- EXACT jar filename -->
+    <finalName>${project.build.finalName}</finalName>
+
+    <plugins>
+      <!-- Java 17 -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.11.0</version>
+        <configuration>
+          <release>${maven.compiler.release}</release>
+        </configuration>
+      </plugin>
+
+      <!-- Make PACKACGE_INSIDE.zip that contains the jar -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <version>3.1.0</version>
+        <executions>
+          <execution>
+            <id>zip-distribution</id>
+            <phase>package</phase>
+            <configuration>
+              <target name="zip-jar">
+                <delete file="${project.build.directory}/PACKACGE_INSIDE.zip"/>
+                <zip destfile="${project.build.directory}/PACKACGE_INSIDE.zip">
+                  <!-- include ONLY the built jar at the root of the zip -->
+                  <zipfileset dir="${project.build.directory}" includes="${project.build.finalName}.jar"/>
+                </zip>
+              </target>
+            </configuration>
+            <goals><goal>run</goal></goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- If you ever need to shade libraries later, uncomment this block.
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.5.0</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals><goal>shade</goal></goals>
+            <configuration>
+              <shadedArtifactAttached>false</shadedArtifactAttached>
+              <finalName>${project.build.finalName}</finalName>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      -->
+    </plugins>
+  </build>
 </project>
