@@ -1,10 +1,13 @@
 package com.example.enchanter.cmd;
 
-import com.example.enchanter.EnchGivePlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.bukkit.command.*;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
+import org.bukkit.command.ConsoleCommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -14,32 +17,33 @@ import java.util.stream.Collectors;
 
 public class GiveCommand implements CommandExecutor, TabCompleter {
 
-    private final EnchGivePlugin plugin;
-    private final Map<String, String> aliasMap;
+    // Friendly aliases -> canonical enchant keys
+    private final Map<String, String> aliasMap = new HashMap<>();
 
-    public GiveCommand(EnchGivePlugin plugin) {
-        this.plugin = plugin;
-        // Common aliases → canonical keys
-        Map<String,String> m = new HashMap<>();
-        m.put("vanishing", "vanishing_curse");
-        m.put("curseofvanishing", "vanishing_curse");
-        m.put("binding", "binding_curse");
-        m.put("curseofbinding", "binding_curse");
-        m.put("unbreak", "unbreaking");
-        m.put("silktouch", "silk_touch");
-        m.put("fireaspect", "fire_aspect");
-        m.put("flame", "flame");
-        m.put("looting", "looting");
-        m.put("fortune", "fortune");
-        m.put("eff", "efficiency");
-        m.put("sharp", "sharpness");
-        m.put("power", "power");
-        m.put("prot", "protection");
-        m.put("blastprot", "blast_protection");
-        m.put("projprot", "projectile_protection");
-        this.aliasMap = m;
+    public GiveCommand() {
+        // common shortcuts
+        aliasMap.put("vanishing", "vanishing_curse");
+        aliasMap.put("curseofvanishing", "vanishing_curse");
+        aliasMap.put("binding", "binding_curse");
+        aliasMap.put("curseofbinding", "binding_curse");
+        aliasMap.put("unbreak", "unbreaking");
+        aliasMap.put("unbreakable", "unbreaking");
+        aliasMap.put("silktouch", "silk_touch");
+        aliasMap.put("fireaspect", "fire_aspect");
+        aliasMap.put("blastprot", "blast_protection");
+        aliasMap.put("projprot", "projectile_protection");
+        aliasMap.put("featherfall", "feather_falling");
+        aliasMap.put("depth", "depth_strider");
+        aliasMap.put("soul", "soul_speed");
+        aliasMap.put("swift", "swift_sneak");
+        aliasMap.put("eff", "efficiency");
+        aliasMap.put("sharp", "sharpness");
+        aliasMap.put("power", "power");
+        aliasMap.put("prot", "protection");
+        aliasMap.put("looting3", "looting"); // people type weird stuff; still resolves
     }
 
+    // -------- main command ----------
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
         if (!sender.hasPermission("enchanter.give") && !(sender instanceof ConsoleCommandSender)) {
@@ -47,50 +51,56 @@ public class GiveCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (args.length < 3) {
-            sender.sendMessage("§eUsage: /" + label + " <player> <material> <amount> [enchant[:level] ...]");
+            sender.sendMessage("§eUsage: /" + label + " <player> <material> <amount> [enchant[:lvl] ...] [name...] [&color]");
             return true;
         }
 
         Player target = resolvePlayer(sender, args[0]);
-        if (target == null) {
-            sender.sendMessage("§cPlayer not found: " + args[0]);
-            return true;
-        }
+        if (target == null) { sender.sendMessage("§cPlayer not found: " + args[0]); return true; }
 
         Material mat = matchMaterial(args[1]);
-        if (mat == null) {
-            sender.sendMessage("§cUnknown material: " + args[1]);
-            return true;
-        }
+        if (mat == null) { sender.sendMessage("§cUnknown material: " + args[1]); return true; }
 
         int amount;
-        try {
-            amount = Math.max(1, Integer.parseInt(args[2]));
-        } catch (NumberFormatException e) {
-            sender.sendMessage("§cAmount must be a number: " + args[2]);
-            return true;
-        }
+        try { amount = Math.max(1, Integer.parseInt(args[2])); }
+        catch (NumberFormatException e) { sender.sendMessage("§cAmount must be a number: " + args[2]); return true; }
 
-        // Parse enchantments from args[3+]
+        // --- parse enchantments first ---
         List<EnchantSpec> enchants = new ArrayList<>();
-        for (int i = 3; i < args.length; i++) {
+        int i = 3;
+        for (; i < args.length; i++){
             EnchantSpec spec = parseEnchant(args[i]);
-            if (spec == null) {
-                sender.sendMessage("§cUnknown enchant: " + args[i]);
-                return true;
-            }
+            if (spec == null) break;           // first non-enchant token
             enchants.add(spec);
         }
 
-        giveItems(target, mat, amount, enchants);
-        sender.sendMessage("§aGave §f" + amount + "x " + mat.name().toLowerCase(Locale.ROOT) +
-                " §ato §f" + target.getName() + formatEnchantsSuffix(enchants));
+        // --- optional trailing name + color ---
+        String colorToken = null;
+        if (i < args.length && ColorUtil.isColorToken(args[args.length - 1])) {
+            colorToken = args[args.length - 1];
+            args = Arrays.copyOf(args, args.length - 1); // chop color off
+        }
+        String customName = (i < args.length) ? String.join(" ", Arrays.copyOfRange(args, i, args.length)) : null;
+
+        // --- give items (with optional name + color) ---
+        giveItems(target, mat, amount, enchants, customName, colorToken);
+
+        // Essentials-like feedback (green/white, dark-red player)
+        sender.sendMessage("§aGave §f" + amount + " §aof §f" + mat.name().toLowerCase(Locale.ROOT)
+                + " §ato §4" + target.getName());
         return true;
     }
 
+    // -------- helpers ----------
     private Player resolvePlayer(CommandSender sender, String token) {
         if ("me".equalsIgnoreCase(token) && sender instanceof Player p) return p;
-        return Bukkit.getPlayerExact(token);
+        Player exact = Bukkit.getPlayerExact(token);
+        if (exact != null) return exact;
+        // fallback: case-insensitive partial if unique
+        List<Player> partial = Bukkit.getOnlinePlayers().stream()
+                .filter(pl -> pl.getName().toLowerCase(Locale.ROOT).startsWith(token.toLowerCase(Locale.ROOT)))
+                .toList();
+        return partial.size() == 1 ? partial.get(0) : null;
     }
 
     private Material matchMaterial(String token) {
@@ -105,6 +115,7 @@ public class GiveCommand implements CommandExecutor, TabCompleter {
     private record EnchantSpec(Enchantment enchant, int level) {}
 
     private EnchantSpec parseEnchant(String tokenIn) {
+        if (tokenIn == null || tokenIn.isEmpty()) return null;
         String token = tokenIn.toLowerCase(Locale.ROOT);
 
         // Split on the LAST ':' to allow namespaced keys like 'minecraft:sharpness:5'
@@ -119,6 +130,7 @@ public class GiveCommand implements CommandExecutor, TabCompleter {
             }
         }
 
+        // normalize name (aliases, underscores)
         String keyRaw = aliasMap.getOrDefault(namePart.replace('-', '_'), namePart.replace('-', '_'));
 
         // Try namespaced first
@@ -126,79 +138,104 @@ public class GiveCommand implements CommandExecutor, TabCompleter {
         NamespacedKey key = NamespacedKey.fromString(keyRaw.contains(":") ? keyRaw : "minecraft:" + keyRaw);
         if (key != null) ench = Enchantment.getByKey(key);
 
-        // Fallback to legacy name
+        // Fallback legacy name (UPPER)
         if (ench == null) ench = Enchantment.getByName(keyRaw.toUpperCase(Locale.ROOT));
 
         return (ench == null) ? null : new EnchantSpec(ench, Math.max(1, level));
     }
 
-    private void giveItems(Player target, Material mat, int total, List<EnchantSpec> enchants) {
+    private void giveItems(Player target, Material mat, int total, List<EnchantSpec> enchants, String name, String color){
         int max = mat.getMaxStackSize();
         int remaining = total;
-        while (remaining > 0) {
+        while (remaining > 0){
             int take = Math.min(max, remaining);
             ItemStack stack = new ItemStack(mat, take);
-            for (EnchantSpec es : enchants) {
-                // Unsafe = allow anything, any level, any item
-                stack.addUnsafeEnchantment(es.enchant(), es.level());
+            for (EnchantSpec es : enchants) stack.addUnsafeEnchantment(es.enchant(), es.level());
+            if (name != null || color != null){
+                var meta = stack.getItemMeta();
+                String base = (name != null) ? name : (meta.hasDisplayName() ? meta.getDisplayName() : pretty(mat));
+                if (color != null) base = color + base;  // color comes last in syntax, but should prefix the name
+                meta.setDisplayName(ColorUtil.colorize(base));
+                stack.setItemMeta(meta);
             }
-            HashMap<Integer, ItemStack> leftovers = target.getInventory().addItem(stack);
-            leftovers.values().forEach(item -> target.getWorld().dropItemNaturally(target.getLocation(), item));
+            var leftovers = target.getInventory().addItem(stack);
+            leftovers.values().forEach(it -> target.getWorld().dropItemNaturally(target.getLocation(), it));
             remaining -= take;
         }
         target.updateInventory();
     }
 
-    private String formatEnchantsSuffix(List<EnchantSpec> specs) {
-        if (specs.isEmpty()) return "";
-        return " §7with §f" + specs.stream()
-                .map(s -> {
-                    NamespacedKey k = s.enchant().getKey();
-                    return k.getKey() + ":" + s.level();
-                })
-                .collect(Collectors.joining(", "));
+    private static String pretty(Material m){
+        String s = m.name().toLowerCase(Locale.ROOT).replace('_',' ');
+        return Character.toUpperCase(s.charAt(0)) + s.substring(1);
     }
 
-    // ---------- Tab completion ----------
+    // -------- tab completion ----------
     @Override
     public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
         if (!sender.hasPermission("enchanter.give")) return Collections.emptyList();
 
-        switch (args.length) {
-            case 1 -> {
-                String pfx = args[0].toLowerCase(Locale.ROOT);
-                List<String> names = Bukkit.getOnlinePlayers().stream().map(Player::getName).sorted().toList();
-                if ("me".startsWith(pfx)) {
-                    List<String> out = new ArrayList<>();
-                    out.add("me");
-                    out.addAll(names.stream().filter(n -> n.toLowerCase(Locale.ROOT).startsWith(pfx)).toList());
-                    return out;
-                }
-                return names.stream().filter(n -> n.toLowerCase(Locale.ROOT).startsWith(pfx)).toList();
-            }
-            case 2 -> {
-                String pfx = args[1].toLowerCase(Locale.ROOT);
-                return Arrays.stream(Material.values())
-                        .map(m -> m.name().toLowerCase(Locale.ROOT))
-                        .filter(n -> n.startsWith(pfx))
-                        .limit(200)
-                        .toList();
-            }
-            case 3 -> {
-                // amount suggestions
-                return Arrays.asList("1", "16", "32", "64");
-            }
-            default -> {
-                // enchantments (with optional ":<level>")
-                String pfx = args[args.length - 1].toLowerCase(Locale.ROOT);
-                return Arrays.stream(Enchantment.values())
-                        .map(e -> e.getKey() != null ? e.getKey().getKey() : e.getName().toLowerCase(Locale.ROOT))
-                        .map(k -> k + (pfx.contains(":") ? "" : ":1"))
-                        .filter(s -> s.startsWith(pfx))
-                        .sorted()
-                        .limit(200)
-                        .toList();
-            }
+        // arg1: player
+        if (args.length == 1) {
+            String pfx = args[0].toLowerCase(Locale.ROOT);
+            List<String> names = Bukkit.getOnlinePlayers().stream().map(Player::getName).sorted().toList();
+            List<String> out = new ArrayList<>();
+            if ("me".startsWith(pfx)) out.add("me");
+            out.addAll(names.stream().filter(n -> n.toLowerCase(Locale.ROOT).startsWith(pfx)).toList());
+            return out;
         }
+
+        // arg2: material
+        if (args.length == 2) {
+            String pfx = args[1].toLowerCase(Locale.ROOT);
+            return Arrays.stream(Material.values())
+                    .map(m -> m.name().toLowerCase(Locale.ROOT))
+                    .filter(n -> n.startsWith(pfx))
+                    .limit(200)
+                    .toList();
+        }
+
+        // arg3: amount
+        if (args.length == 3) {
+            return Arrays.asList("1", "16", "32", "64");
+        }
+
+        // args >= 4
+        String last = args[args.length - 1];
+
+        // Show color suggestions when the user starts typing a color token
+        if (last.startsWith("&") || last.startsWith("#")) {
+            return Arrays.asList("&0","&1","&2","&3","&4","&5","&6","&7","&8","&9",
+                                 "&a","&b","&c","&d","&e","&f","&k","&l","&m","&n","&o","&r",
+                                 "#FFFFFF","#FFAA00","#00FFFF","#FF0000","#00FF00","#AAAAAA");
+        }
+
+        // Determine where enchantments stop to decide what to suggest
+        int i = 3;
+        for (; i < args.length; i++) {
+            if (parseEnchant(args[i]) == null) break;
+        }
+        boolean stillInEnchants = (args.length - 1) < i;
+
+        if (stillInEnchants) {
+            String pfx = last.toLowerCase(Locale.ROOT);
+            // use available enchant keys + legacy names, add ":1" hint if no level yet
+            Set<String> keys = Arrays.stream(Enchantment.values())
+                    .map(e -> e != null && e.getKey() != null ? e.getKey().getKey() : null)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toCollection(TreeSet::new));
+            // include a few aliases
+            keys.addAll(aliasMap.values());
+
+            return keys.stream()
+                    .map(k -> k + (pfx.contains(":") ? "" : ":1"))
+                    .filter(s -> s.startsWith(pfx))
+                    .limit(200)
+                    .toList();
+        }
+
+        // past enchants = name/color area → no strong suggestions (let the user type)
+        return Collections.emptyList();
     }
 }
+
