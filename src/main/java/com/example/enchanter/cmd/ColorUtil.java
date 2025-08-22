@@ -3,13 +3,13 @@ package com.example.enchanter.cmd;
 import org.bukkit.ChatColor;
 import java.util.regex.*;
 
-public final class ColorUtil {
-    // ...colorize(), isColorToken(), normalizeSpaces() as you have...
-    public static String stripSpaceAfterLeadingColor(String s){
-        if (s == null) return null;
-        return s.replaceFirst("(?i)^((?:&#[0-9A-F]{6}|#[0-9A-F]{6}|&[0-9A-FK-OR]|§[0-9A-FK-OR])+)[ \\t]+", "$1");
+    public final class ColorUtil {
+        // ...colorize(), isColorToken(), normalizeSpaces() as you have...
+        public static String stripSpaceAfterLeadingColor(String s){
+            if (s == null) return null;
+            return s.replaceFirst("(?i)^((?:&#[0-9A-F]{6}|#[0-9A-F]{6}|&[0-9A-FK-OR]|§[0-9A-FK-OR])+)[ \\t]+", "$1");
+          }
     }
-}
 
     public static String colorize(String s){
         if (s == null || s.isEmpty()) return s;
