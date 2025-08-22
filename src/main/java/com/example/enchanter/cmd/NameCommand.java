@@ -1,5 +1,6 @@
 package com.example.enchanter.cmd;
 
+import net.kyori.adventure.text.Component;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -11,20 +12,27 @@ public class NameCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args){
         if (!(sender instanceof Player p)) { sender.sendMessage("§cPlayers only."); return true; }
-        if (args.length < 1){ sender.sendMessage("§eUsage: /name <name...>"); return true; }
+        if (args.length < 1){ sender.sendMessage("§6[EasyEnchants] §4Usage: /name <name...>"); return true; }
 
         ItemStack hand = p.getInventory().getItemInMainHand();
-        if (hand == null || hand.getType().isAir()){ p.sendMessage("§cHold an item."); return true; }
+        if (hand == null || hand.getType().isAir()){ p.sendMessage("§6[EasyEnchants] §4Hold an item."); return true; }
 
-        String name = String.join(" ", Arrays.asList(args));
         ItemMeta meta = hand.getItemMeta();
 
-        // keep existing leading color if present
-        String prefix = org.bukkit.ChatColor.getLastColors(meta.hasDisplayName() ? meta.getDisplayName() : "");
-        meta.setDisplayName(ColorUtil.colorize(prefix + name));
+        // Keep existing color if present, but kill italics
+        String existingLegacy = "";
+        if (meta.hasDisplayName()) {
+            Component c = meta.displayName();
+            if (c != null) existingLegacy = TextUtil.toLegacy(c);
+        }
+        String lastColors = org.bukkit.ChatColor.getLastColors(ColorUtil.colorize(existingLegacy));
+        String nameRaw = ColorUtil.normalizeSpaces(String.join(" ", Arrays.asList(args)));
+        String finalLegacy = ColorUtil.colorize((lastColors == null ? "" : lastColors) + nameRaw);
+
+        meta.displayName(TextUtil.legacyNoItalics(finalLegacy));
         hand.setItemMeta(meta);
 
-        p.sendMessage("§a[EasyEnchants] §fname changed");
+        p.sendMessage("§6[EasyEnchants] §6name changed");
         return true;
     }
 }
