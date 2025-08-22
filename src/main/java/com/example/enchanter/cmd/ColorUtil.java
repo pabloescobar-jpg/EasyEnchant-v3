@@ -4,8 +4,12 @@ import org.bukkit.ChatColor;
 import java.util.regex.*;
 
 public final class ColorUtil {
-    private ColorUtil(){}
-    private static final Pattern HEX = Pattern.compile("(?i)(?:&?#)([0-9a-f]{6})");
+    // ...colorize(), isColorToken(), normalizeSpaces() as you have...
+    public static String stripSpaceAfterLeadingColor(String s){
+        if (s == null) return null;
+        return s.replaceFirst("(?i)^((?:&#[0-9A-F]{6}|#[0-9A-F]{6}|&[0-9A-FK-OR]|§[0-9A-FK-OR])+)[ \\t]+", "$1");
+    }
+}
 
     public static String colorize(String s){
         if (s == null || s.isEmpty()) return s;
